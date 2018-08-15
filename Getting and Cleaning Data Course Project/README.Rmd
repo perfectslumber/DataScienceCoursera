@@ -1,0 +1,24 @@
+# Getting and Cleaning Data Course Project
+The run_analysis.R file can be found in "Course Project" folder
+There are 5 objects for this course project, which are expained with comments
+in run_analysis.R script.
+
+First, I loaded all the data needed into R with read.table() function
+
+* Merges the training and the test sets to create one data set.
+I used cbind() and rbind() function to merge x and y in both train and test datasets, and created a new merged dataset called total_data
+I then assigned column names based on features from "features.txt" file
+
+* Extracts only the measurements on the mean and standard deviation for each measurement.
+I used grep() function to find columns whose names contain either "mean" or "std", sorted their indices to match the original order and extracted them to a new dataset called extacted_data
+
+* Uses descriptive activity names to name the activities in the data set
+I changed the class of "activity" column to factors, and replaced the levels of these factors with corresponding character levels provided in "activity_labels.txt"
+
+* Appropriately labels the data set with descriptive variable names.
+This has already been done in step 1
+
+* From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+I took advantage of dplyr package and converted the extracted_data to tbl_df format for easy manipulation
+I then grouped the dataset based on subject and activity using group_by() function
+Finally I used summarize_all() function to apply mean() function to all columns of the dataset, and generate a new, tidy dataset with the average of each variable for each activity and each subject

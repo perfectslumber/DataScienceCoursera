@@ -33,8 +33,7 @@ levels(extracted_data[, 2]) <- tolower(labels[, 2])
 #5 From the data set in step 4, creates a second, independent tidy data set
 #   with the average of each variable for each activity and each subject.
 extracted_data[, 1] <- as.factor(extracted_data[, 1])
-colnames(extracted_data) <- gsub("-", "", colnames(extracted_data))
-colnames(extracted_data) <- gsub("\\(\\)", "", colnames(extracted_data))
+colnames(extracted_data) <- gsub("-|\\(\\)", "", colnames(extracted_data))
     # remove minus signs and brackets in coloumn names which would be confusing for analysis
 extracted_data <- tbl_df(extracted_data)
 extracted_data <- group_by(extracted_data, subject, activity)
