@@ -1,0 +1,82 @@
+---
+title: "Practical Machine Learning course project"
+author: "Qinan Hu"
+date: "11/20/2018"
+output: html_document
+---
+
+```{r SetOptions, echo = FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, results = "markup", message = FALSE, warning = FALSE, cache = TRUE, fig.align = "center")
+```
+
+#Introduction
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+The goal of my project is to predict the manner in which they did the exercise. I will build a prediction model based on the training data set and evaluate my model on the testing data set.
+
+#Exploratory Data Analysis
+First I will load the training data set, check the first few columns and rows, and perform some exploratory analysis.
+```{r ExpDataAnalysis 1}
+training <- read.csv("pml-training.csv", na.strings = c("", "NA"))
+testing <- read.csv("pml-testing.csv", na.strings = c("", "NA"))
+dim(training)
+head(training[, 1:5])
+```
+There are 19622 observations of 160 variables. We can tell the first two variables describes sample ID and names of participants, which are not helpful for building the model so we can remove them.
+```{r ExpDataAnalysis 2}
+training <- training[, -c(1,2)]
+```
+I also notice that there are some variables with missing values (including NAs and empty cells). I will then count how many missing values there are in each variable.
+```{r ExpDataAnalysis 3}
+NAcount <- sapply(training, function(x) sum(is.na(x)))
+unique(NAcount)
+```
+The number of missing values are either 0 or 19216, the latter is 97.9% of total observation numbers. It is reasonable to assume that with this many missing values, those variables are not helpful for building the model. So I will just remove them from the data set to save computation time.
+```{r ExpDataAnalysis 4}
+training <- training[, colSums(is.na(training)) == 0]
+```
+
+#Building Prediction Model
+I will build three different models, all using 5-fold cross validation, to predict "classe" variable in the training data set: rf, lda, and gbm. For each model, I will assess its accuracy on training set. I will then build a combined prediction model of all three and see if it has improved accuracy.
+```{r ModelFit, results = "hide"}
+set.seed(3344)
+library(caret)
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+train_control <- trainControl(method = "cv", number = 5, allowParallel = TRUE)
+fit1 <- train(classe ~ ., data = training, trControl = train_control, method = "rf")
+fit2 <- train(classe ~ ., data = training, trControl = train_control, method = "lda")
+fit3 <- train(classe ~ ., data = training, trControl = train_control, method = "gbm")
+stopCluster(cluster)
+registerDoSEQ()
+```
+
+#Evaluating Prediction Model
+I will evaluate the accuracy of three models on training set.
+```{r ModelEval 1}
+pred1 <- predict(fit1, training)
+pred2 <- predict(fit2, training)
+pred3 <- predict(fit3, training)
+plot(fit1)
+confusionMatrix(pred1, training$classe)
+confusionMatrix(pred2, training$classe)
+plot(fit3)
+confusionMatrix(pred3, training$classe)
+```
+From the confusion matrix results, we can tell the random forest model has the highest accuracy of 100% on the training data set. I will then create a combined prediction matrix based on majority vote of three models, and see if it can improve accuracy on the test set.
+```{r ModelEval 2}
+pred1t <- predict(fit1, testing)
+pred2t <- predict(fit2, testing)
+pred3t <- predict(fit3, testing)
+combfit <- data.frame(pred1t, pred2t, pred3t)
+combfit$finalpred <- apply(combfit,1,function(x) names(which.max(table(x))))
+mean(combfit$pred1t == combfit$finalpred)
+```
+We can tell majority vote of three models does not differ from the prediction of random forest alone.  
+Thus, our final prediction results are generated.
+```{r Final prediction on testing set}
+combfit$finalpred
+```
+When I applied my prediction model to the testing set, I got 100% accuray. From the plot I estimate the out-of-sample accuracy of my model is > 99.9%
