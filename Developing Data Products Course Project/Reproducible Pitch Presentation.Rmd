@@ -1,0 +1,48 @@
+---
+title: "Developing Data Products Course Project"
+author: "Qinan Hu"
+date: "12/2/2018"
+output: ioslides_presentation
+theme: league
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+- This shiny app uses R's built-in dataset "airquality" to build simple linear models and predict Ozone value in the dataset.
+- The app is designed so that users can customize the predictors they wish to use, and specify values of those predictors. The app will then build a simple linear model of those predictors, and make a prediction of Ozone value based on input predictor values.
+- The source code of ui.R and server.R file can be found [here](https://github.com/perfectslumber/DataScienceCoursera/tree/master/Developing%20Data%20Products%20Course%20Project/Airquality_Linear_Model).
+- If users choose only one predictor, the app will also draw a fitted plot of its relationship with Ozone. We can tell there are some level of linear relationship in there (see slide 4).
+- Users can choose up to 4 predictors to build the linear model.
+
+## A summary of "airquality" dataset
+Observations with missing values are removed when building the model.
+```{r cars, echo = TRUE, comment = ""}
+summary(airquality)
+```
+
+
+## Simple linear regression with one predictor
+```{r plots}
+par(mfrow = c(2, 2), mar = c(1, 1, 1, 1))
+with(airquality, plot(Solar.R, Ozone))
+fit1 <- lm(Ozone ~ Solar.R, airquality)
+abline(fit1, lwd = 2, col = "red")
+with(airquality, plot(Wind, Ozone))
+fit2 <- lm(Ozone ~ Wind, airquality)
+abline(fit2, lwd = 2, col = "red")
+with(airquality, plot(Temp, Ozone))
+fit3 <- lm(Ozone ~ Temp, airquality)
+abline(fit3, lwd = 2, col = "red")
+with(airquality, plot(Month, Ozone))
+fit4 <- lm(Ozone ~ Month, airquality)
+abline(fit4, lwd = 2, col = "red")
+```
+
+## Conslusion
+This app builds simple linear models to predictor Ozone value in "airquality" dataset based on user input. This app only builds a simple linear model based on selected predictors and input, which may give negative or weird Ozone values due to its limitations. More advanved regression model is required to precisely predict Ozone values.
+
+
