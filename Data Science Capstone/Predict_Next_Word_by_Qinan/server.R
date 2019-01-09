@@ -1,29 +1,29 @@
 library(shiny)
 library(dplyr)
-library(tidyr)
 library(stringr)
-library(quanteda)
 library(readr)
-library(data.table)
 
+contractions <- NULL
 SOS_word_candidate <- NULL
 word_freq <- NULL
 two_gram_freq <- NULL
 three_gram_freq <- NULL
 four_gram_freq <- NULL
 
-readData <- function(session, word_freq, two_gram_freq, three_gram_freq, four_gram_freq) {
+readData <- function(session, contractions, SOS_word_candidate, word_freq, two_gram_freq, three_gram_freq, four_gram_freq) {
     progress <- Progress$new(session)
+    progress$set(value = 0, message = "Loading contractions ... 0/5")
+    contractions <<- read_csv("data/contractions.csv")
     progress$set(value = 0, message = "Loading start of sentence words ... 1/5")
-    SOS_word_candidate <<- read_csv("final_freqs/SOS_word_candidate.csv")
+    SOS_word_candidate <<- read_csv("data/SOS_word_candidate.csv")
     progress$set(value = 0.05, message = "Loading unigram frequency ... 2/5")
-    word_freq <<- read_csv("final_freqs/word_freq.csv")
+    word_freq <<- read_csv("data/word_freq.csv")
     progress$set(value = 0.1, message = "Loading bigram frequency ... 3/5")
-    two_gram_freq <<- read_csv("final_freqs/two_gram_freq.csv")
-    progress$set(value = 0.3, message = "Loading trigram frequency ... 4/5")
-    three_gram_freq <<- read_csv("final_freqs/three_gram_freq.csv")
-    progress$set(value = 0.6, message = "Loading quadragram frequency... 5/5")
-    four_gram_freq <<- read_csv("final_freqs/four_gram_freq.csv")
+    two_gram_freq <<- read_csv("data/two_gram_freq.csv")
+    progress$set(value = 0.4, message = "Loading trigram frequency ... 4/5")
+    three_gram_freq <<- read_csv("data/three_gram_freq.csv")
+    progress$set(value = 0.8, message = "Loading quadragram frequency... 5/5")
+    four_gram_freq <<- read_csv("data/four_gram_freq.csv")
     progress$set(value = 1, message = 'Loading...')
     progress$close()
 }
@@ -35,7 +35,7 @@ shinyServer(function(input, output, session) {
     })
     
     if(is.null(four_gram_freq)){
-        readData(session, word_freq, two_gram_freq, three_gram_freq, four_gram_freq)
+        readData(session, contractions, SOS_word_candidate, word_freq, two_gram_freq, three_gram_freq, four_gram_freq)
     }
     
     output$user_text1 <- renderText({
@@ -47,7 +47,7 @@ shinyServer(function(input, output, session) {
     
     SBO_pred <- reactive({
         req(input$user_input1)
-        SBO_word_prediction(input$user_input1,four_gram_freq, three_gram_freq, two_gram_freq, word_freq)
+        SBO_word_prediction(input$user_input1,four_gram_freq, three_gram_freq, two_gram_freq, word_freq, contractions, SOS_word_candidate)
     })
     
     output$SBO_can1 <- renderText({SBO_pred()$Prediction[1]})
@@ -78,7 +78,7 @@ shinyServer(function(input, output, session) {
     
     KN_pred <- reactive({
         req(input$user_input2)
-        KN_word_prediction(input$user_input2, four_gram_freq, three_gram_freq, two_gram_freq, word_freq)
+        KN_word_prediction(input$user_input2, four_gram_freq, three_gram_freq, two_gram_freq, word_freq, contractions, SOS_word_candidate)
     })
     
     output$KN_can1 <- renderText({KN_pred()$Prediction[1]})

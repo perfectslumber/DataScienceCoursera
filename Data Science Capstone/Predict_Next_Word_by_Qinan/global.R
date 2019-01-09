@@ -1,11 +1,8 @@
 library(dplyr)
-library(tidyr)
 library(stringr)
-library(quanteda)
 library(readr)
-library(data.table)
 
-SBO_word_prediction <- function(input_words, four_grams, three_grams, two_grams, unigram){
+SBO_word_prediction <- function(input_words, four_grams, three_grams, two_grams, unigram, contractions, SOS_word_candidate){
     SOS <- FALSE
     input_words <- trimws(input_words)
     last_input_character <- str_sub(input_words, -1)
@@ -28,14 +25,14 @@ SBO_word_prediction <- function(input_words, four_grams, three_grams, two_grams,
         final_candidate <- SBO_get_two(input_words, two_grams, unigram)
     }
     else if(input_words_count == 2){
-        final_candidate <- SBO_get_three(input_words, three_grams)
+        final_candidate <- SBO_get_three(input_words, three_grams, two_grams, unigram)
     }
     else {
         last_three_words <- word(input_words, start = input_words_count - 2,
                                  end = input_words_count, sep = "_")
-        final_candidate <- SBO_get_four(last_three_words, four_grams)
+        final_candidate <- SBO_get_four(last_three_words, four_grams, three_grams, two_grams, unigram)
     }
-    final_candidate$output <- correct_contractions(final_candidate$output)
+    final_candidate$output <- correct_contractions(final_candidate$output, contractions)
     if(SOS){
         final_candidate <- data_frame(output = SOS_word_candidate$SOS_word[1:5],
                                       inferred_from = "Start of sentence")
@@ -64,7 +61,7 @@ SBO_get_two <- function(input_two_pre, two_grams, unigram){
     }
 }
 
-SBO_get_three <- function(input_three_pre, three_grams){
+SBO_get_three <- function(input_three_pre, three_grams, two_grams, unigram){
     candidate <- three_grams %>%
         filter(pre == input_three_pre) %>%
         head(5) %>%
@@ -74,7 +71,7 @@ SBO_get_three <- function(input_three_pre, three_grams){
     }
     else{
         last_word <- word(input_three_pre, start = 2, sep = "_")
-        mix_candidate <- rbind(candidate, SBO_get_two(last_word, two_gram_freq, word_freq)) %>%
+        mix_candidate <- rbind(candidate, SBO_get_two(last_word, two_grams, unigram)) %>%
             distinct(output, .keep_all = TRUE) %>%
             head(5)
         return(mix_candidate)
@@ -82,7 +79,7 @@ SBO_get_three <- function(input_three_pre, three_grams){
 }
 
 
-SBO_get_four <- function(input_four_pre, four_grams){
+SBO_get_four <- function(input_four_pre, four_grams, three_grams, two_grams, unigram){
     candidate <- four_grams %>%
         filter(pre == input_four_pre) %>%
         head(5) %>%
@@ -92,14 +89,14 @@ SBO_get_four <- function(input_four_pre, four_grams){
     }
     else{
         last_two_words <- word(input_four_pre, start = 2, end = 3, sep = "_")
-        mix_candidate <- rbind(candidate, SBO_get_three(last_two_words, three_gram_freq)) %>%
+        mix_candidate <- rbind(candidate, SBO_get_three(last_two_words, three_grams, two_grams, unigram)) %>%
             distinct(output, .keep_all = TRUE) %>%
             head(5)
         return(mix_candidate)
     }
 }
 
-KN_word_prediction <- function(input_words, four_grams, three_grams, two_grams, unigram){
+KN_word_prediction <- function(input_words, four_grams, three_grams, two_grams, unigram, contractions, SOS_word_candidate){
     SOS <- FALSE
     input_words <- trimws(input_words)
     last_input_character <- str_sub(input_words, -1)
@@ -129,7 +126,7 @@ KN_word_prediction <- function(input_words, four_grams, three_grams, two_grams, 
                                  end = input_words_count, sep = "_")
         final_candidate <- KN_four_gram(last_three_words, four_grams, three_grams, two_grams, unigram)
     }
-    final_candidate$output <- correct_contractions(final_candidate$output)
+    final_candidate$output <- correct_contractions(final_candidate$output, contractions)
     if(SOS){
         final_candidate <- data_frame(output = SOS_word_candidate$SOS_word[1:5],
                                       inferred_from = "Start of sentence",
@@ -182,7 +179,7 @@ KN_three_gram <- function(input_three_pre, three_grams, two_grams, unigram){
     observed_three_grams <- filter(three_grams, pre == input_three_pre)
     if(nrow(observed_three_grams) < 1){
         last_word <- word(input_three_pre, start = 2, sep = "_")
-        return(KN_two_gram(last_word, two_gram_freq, word_freq))
+        return(KN_two_gram(last_word, two_grams, unigram))
     }
     else{
         observed_three_grams <- observed_three_grams %>% rowwise() %>%
@@ -213,7 +210,7 @@ KN_four_gram <- function(input_four_pre, four_grams, three_grams, two_grams, uni
     observed_four_grams <- filter(four_grams, pre == input_four_pre)
     if(nrow(observed_four_grams) < 1){
         last_two_words <- word(input_four_pre, start = 2, end = 3, sep = "_")
-        return(KN_three_gram(last_two_words, three_gram_freq, two_gram_freq, word_freq))
+        return(KN_three_gram(last_two_words, three_grams, two_grams, unigram))
     }
     else{
         observed_four_grams <- observed_four_grams %>% rowwise() %>%
@@ -244,13 +241,10 @@ KN_four_gram <- function(input_four_pre, four_grams, three_grams, two_grams, uni
     }
 }
 
-correct_contractions <- function(x){
+correct_contractions <- function(x, contractions){
     # Cannot correct "we'll" or "we're" because "well" and "were" are legit words,
     # "he'll" can be corrected because "hell" is blocked by profanity filter
-    contractions <- read_csv("contractions.csv")
-    contractions <- mutate(contractions, input = gsub("\\'", "", contraction))
     # https://en.wikipedia.org/wiki/Wikipedia:List_of_English_contractions
-    contractions$input <- tolower(contractions$input)
     for(i in 1:length(x)){
         if(length(which(contractions$input == x[i])) != 0)
             x[i] <- contractions$contraction[which(contractions$input == x[i])]

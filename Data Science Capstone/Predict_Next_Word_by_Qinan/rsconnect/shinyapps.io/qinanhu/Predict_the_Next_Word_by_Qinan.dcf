@@ -1,0 +1,12 @@
+name: Predict_the_Next_Word_by_Qinan
+title: Predict_the_Next_Word_by_Qinan
+username:
+account: qinanhu
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 632737
+bundleId: 1804962
+url: https://qinanhu.shinyapps.io/Predict_the_Next_Word_by_Qinan/
+when: 1547048121.36205
+asMultiple: FALSE
+asStatic: FALSE
